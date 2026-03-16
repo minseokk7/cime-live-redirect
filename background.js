@@ -21,12 +21,16 @@ class CimeLiveChecker {
     });
 
     // Handle Messages from Popup
-    browserAPI.runtime.onMessage.addListener((message) => {
+    browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
+      console.log('Message received in background:', message);
       if (message.type === 'UPDATE_ALARM') {
         this.startPolling();
+        if (sendResponse) sendResponse({ success: true });
       } else if (message.type === 'TEST_NOTIFY') {
         this.showTestNotification();
+        if (sendResponse) sendResponse({ success: true });
       }
+      return true; // Keep channel open for async response
     });
 
     // Handle Notification Button Clicks
@@ -71,12 +75,22 @@ class CimeLiveChecker {
 
   async checkStreamerStatus(streamer) {
     try {
-      const response = await fetch(CONFIG.CHANNEL_API_URL(streamer.slug));
+      const platform = streamer.platform || CONFIG.PLATFORMS.CIME;
+      const response = await fetch(CONFIG.CHANNEL_API_URL(streamer.slug, platform));
       if (!response.ok) throw new Error('API request failed');
       const json = await response.json();
       
-      const isLive = json.data?.isLive || false;
-      const liveId = json.data?.id; // Using channel id as a proxy if live id not available directly
+      let isLive = false;
+      let liveId = null;
+
+      if (platform === CONFIG.PLATFORMS.CHZZK) {
+        isLive = json.content?.status === 'OPEN';
+        liveId = json.content?.liveId;
+      } else {
+        // ci.me logic
+        isLive = json.data?.isLive || false;
+        liveId = json.data?.id;
+      }
 
       const { [CONFIG.STORAGE_KEYS.HISTORY]: history = {} } = 
         await browserAPI.storage.local.get(CONFIG.STORAGE_KEYS.HISTORY);
@@ -85,7 +99,7 @@ class CimeLiveChecker {
 
       // Transition: Offline -> Online
       if (isLive && !prevStatus.isLive) {
-        await this.handleLiveStarted(streamer, json.data);
+        await this.handleLiveStarted(streamer, json.content || json.data);
       } 
       // Mode: ALWAYS check (if tab is open)
       else if (isLive && streamer.mode === CONFIG.MODES.ALWAYS) {
@@ -97,7 +111,7 @@ class CimeLiveChecker {
       await browserAPI.storage.local.set({ [CONFIG.STORAGE_KEYS.HISTORY]: history });
 
     } catch (error) {
-      console.error(`Error checking ${streamer.slug}:`, error);
+      console.error(`Error checking ${streamer.slug} (${streamer.platform}):`, error);
     }
   }
 
@@ -109,21 +123,22 @@ class CimeLiveChecker {
 
     // Additionally handle tab opening for ONCE and ALWAYS modes
     if (mode !== CONFIG.MODES.NOTIFY) {
-      this.openLiveTab(streamer.slug);
+      this.openLiveTab(streamer.slug, streamer.platform);
     }
   }
 
   async checkAndReopenTab(streamer) {
-    const tabs = await browserAPI.tabs.query({ url: `${CONFIG.LIVE_PAGE_URL(streamer.slug)}*` });
+    const url = CONFIG.LIVE_PAGE_URL(streamer.slug, streamer.platform);
+    const tabs = await browserAPI.tabs.query({ url: `${url}*` });
     if (tabs.length === 0) {
-      this.openLiveTab(streamer.slug);
+      this.openLiveTab(streamer.slug, streamer.platform);
     }
   }
 
-  async openLiveTab(slug) {
-    const url = CONFIG.LIVE_PAGE_URL(slug);
+  async openLiveTab(slug, platform = CONFIG.PLATFORMS.CIME) {
+    const url = CONFIG.LIVE_PAGE_URL(slug, platform);
     // Check if tab already exists
-    const tabs = await browserAPI.tabs.query({ url: `${url}*` });
+    const tabs = await browserAPI.tabs.query({ url: `${url.split('?')[0]}*` });
     if (tabs.length > 0) {
       browserAPI.tabs.update(tabs[0].id, { active: true });
     } else {
@@ -142,13 +157,14 @@ class CimeLiveChecker {
 
       console.log('Creating notification:', options);
 
-      // Null ID for auto-generation
-      browserAPI.notifications.create(null, options, (id) => {
+      // Use empty string for auto-generated ID in Firefox
+      browserAPI.notifications.create('', options, (id) => {
         if (browserAPI.runtime.lastError) {
           console.error('Notification Error:', browserAPI.runtime.lastError.message);
           // Try without icon as ultimate fallback
-          delete options.iconUrl;
-          browserAPI.notifications.create(null, options);
+          const fallbackOptions = { ...options };
+          delete fallbackOptions.iconUrl;
+          browserAPI.notifications.create('', fallbackOptions);
         } else {
           console.log('Notification created:', id);
         }

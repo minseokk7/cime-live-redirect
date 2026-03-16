@@ -3,20 +3,30 @@
  * Project configuration and constants
  */
 export const CONFIG = {
+  PLATFORMS: {
+    CIME: 'CIME',
+    CHZZK: 'CHZZK'
+  },
   API_BASE_URL: 'https://ci.me/api',
-  LIVE_PAGE_URL: (slug) => `https://ci.me/@${slug}/live`,
-  CHANNEL_API_URL: (slug) => `https://ci.me/api/app/channels/${slug}`,
-  DEFAULT_POLLING_INTERVAL: 0.5, // 30 seconds (Chrome alarms use minutes) - actually minimum is 1 min for non-unpacked extensions, but let's try.
-  MIN_INTERVAL: 0.25, // 15 seconds
+  LIVE_PAGE_URL: (slug, platform = 'CIME') => {
+    if (platform === 'CHZZK') return `https://chzzk.naver.com/live/${slug}`;
+    return `https://ci.me/@${slug}/live`;
+  },
+  CHANNEL_API_URL: (slug, platform = 'CIME') => {
+    if (platform === 'CHZZK') return `https://api.chzzk.naver.com/service/v2/channels/${slug}/live-detail`;
+    return `https://ci.me/api/app/channels/${slug}`;
+  },
+  DEFAULT_POLLING_INTERVAL: 0.5,
+  MIN_INTERVAL: 0.25,
   MODES: {
-    ONCE: 'ONCE',         // Open once per broadcast
-    ALWAYS: 'ALWAYS',     // Always open (if tab closed)
-    NOTIFY: 'NOTIFY'      // Only show notification
+    ONCE: 'ONCE',
+    ALWAYS: 'ALWAYS',
+    NOTIFY: 'NOTIFY'
   },
   STORAGE_KEYS: {
-    STREAMERS: 'cime_streamers',     // List of monitored streamers [{slug, name, mode}]
-    HISTORY: 'cime_history',         // History of detected live status {slug: {liveId, lastStatus}}
-    GLOBAL_MODE: 'cime_global_mode', // Default mode (ONCE, ALWAYS, NOTIFY)
-    INTERVAL: 'cime_interval'        // Polling interval
+    STREAMERS: 'cime_streamers',
+    HISTORY: 'cime_history',
+    GLOBAL_MODE: 'cime_global_mode',
+    INTERVAL: 'cime_interval'
   }
 };

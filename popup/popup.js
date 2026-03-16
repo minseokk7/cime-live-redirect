@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const globalModeSelect = document.getElementById('global-mode');
   const testNotifyBtn = document.getElementById('test-notify');
   const clearHistoryBtn = document.getElementById('clear-history');
+  const manualPlatformSelect = document.getElementById('manual-platform');
 
   // Load Settings
   const { 
@@ -50,11 +51,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   const manualSlugInput = document.getElementById('manual-slug');
 
   async function handleManualAdd() {
+    const platform = manualPlatformSelect.value;
     const slug = manualSlugInput.value.trim().replace(/^@/, '');
     if (!slug) return;
 
     const { cime_streamers: currentStreamers = [] } = await browserAPI.storage.local.get('cime_streamers');
-    if (currentStreamers.some(s => s.slug === slug)) {
+    if (currentStreamers.some(s => s.slug === slug && s.platform === platform)) {
       alert('이미 등록된 스트리머입니다.');
       return;
     }
@@ -62,6 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const newStreamer = {
       slug,
       name: slug, // Default name to slug for manual entry
+      platform,
       mode: globalModeSelect.value,
       addedAt: Date.now()
     };
@@ -102,18 +105,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   function renderStreamers(list) {
     streamerCount.innerText = list.length;
     if (list.length === 0) {
-      streamerList.innerHTML = '<div class="empty-state">등록된 스트리머가 없습니다.<br>ci.me 방송 페이지에서 버튼을 눌러 추가하세요.</div>';
+      streamerList.innerHTML = '<div class="empty-state">등록된 스트리머가 없습니다.<br>방송 페이지에서 버튼을 눌러 추가하세요.</div>';
       return;
     }
 
     streamerList.innerHTML = '';
     list.forEach((s, index) => {
+      const platform = s.platform || 'CIME';
       const item = document.createElement('div');
       item.className = 'streamer-item';
       item.innerHTML = `
         <div class="streamer-info">
           <div class="streamer-name">${s.name}</div>
-          <div class="streamer-slug">@${s.slug}</div>
+          <div class="streamer-slug">${platform === 'CHZZK' ? '치지직 ' : ''}@${s.slug}</div>
+          <div class="platform-badge ${platform.toLowerCase()}">${platform}</div>
         </div>
         <div class="streamer-controls">
           <select class="item-mode" data-index="${index}">

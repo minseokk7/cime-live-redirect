@@ -227,3 +227,22 @@ input[type="range"] {
   align-items: center;
   justify-content: center;
 }
+.platform-badge {
+  font-size: 10px;
+  padding: 1px 4px;
+  border-radius: 4px;
+  font-weight: bold;
+  margin-top: 2px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.platform-badge.cime {
+  background-color: var(--accent-color);
+  color: white;
+}
+
+.platform-badge.chzzk {
+  background-color: #00ffa3;
+  color: #000;
+}
