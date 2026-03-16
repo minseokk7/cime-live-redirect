@@ -1,0 +1,51 @@
+{
+  "manifest_version": 3,
+  "name": "씨미(ci.me) 방송 자동 이동",
+  "version": "1.0.0",
+  "description": "선호하는 스트리머의 ci.me 방송이 시작되면 자동으로 해당 페이지로 이동하거나 알림을 보냅니다.",
+  "permissions": [
+    "alarms",
+    "storage",
+    "notifications",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://ci.me/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "scripts": ["background.js"],
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://ci.me/*"],
+      "js": ["compat.js", "content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["icons/*.png"],
+      "matches": ["https://ci.me/*"]
+    }
+  ],
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "cime-live-redirect@minse.gemini"
+    }
+  }
+}

@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>씨미 방송 자동 이동</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <img src="../icons/icon48.png" alt="CI.ME" width="24">
+      <span>씨미 자동 이동</span>
+    </div>
+    <div class="status-indicator" id="global-status">동작 중</div>
+  </div>
+
+  <div class="content">
+    <div class="section">
+      <div class="section-header">
+        <h2>스트리머 추가</h2>
+      </div>
+      <div class="add-form">
+        <input type="text" id="manual-slug" placeholder="아이디(slug) 입력 (예: ninosunday)">
+        <button id="manual-add-btn" class="btn-icon">✚</button>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-header">
+        <h2>모니터링 목록</h2>
+        <span class="count" id="streamer-count">0</span>
+      </div>
+      <div class="streamer-list" id="streamer-list">
+        <!-- Streamers will be added here dynamically -->
+        <div class="empty-state">등록된 스트리머가 없습니다.<br>ci.me 방송 페이지에서 버튼을 눌러 추가하세요.</div>
+      </div>
+    </div>
+
+    <div class="section">
+      <h2>설정</h2>
+      <div class="setting-item">
+        <label for="interval">확인 주기 (분)</label>
+        <input type="range" id="interval" min="0.25" max="5" step="0.25" value="0.5">
+        <span id="interval-val">30초</span>
+      </div>
+      <div class="setting-item">
+        <label for="global-mode">기본 작동 방식</label>
+        <select id="global-mode">
+          <option value="ONCE">1회만 열기 (기본)</option>
+          <option value="ALWAYS">항상 열기</option>
+          <option value="NOTIFY">알림만 받기</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button id="test-notify" class="btn secondary">🔔 알림 테스트</button>
+      <button id="clear-history" class="btn danger">기록 초기화</button>
+    </div>
+  </div>
+
+  <script src="popup.js"></script>
+</body>
+</html>

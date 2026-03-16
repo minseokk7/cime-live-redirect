@@ -1,0 +1,16 @@
+# Extensions
+*.crx
+*.xpi
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Workspace
+.vscode/
+.idea/
