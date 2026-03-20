@@ -13,16 +13,15 @@ class CimeLiveChecker {
 
   async init() {
     console.log('CimeLiveChecker initialized');
-    // Setup Alarms
+    // 알람 리스너 등록 - 주기적 폴링
     browserAPI.alarms.onAlarm.addListener((alarm) => {
       if (alarm.name === 'cime-poll') {
         this.checkAllStreamers();
       }
     });
 
-    // Handle Messages from Popup
+    // 팝업에서 전달된 메시지 처리
     browserAPI.runtime.onMessage.addListener((message, sender, sendResponse) => {
-      console.log('Message received in background:', message);
       if (message.type === 'UPDATE_ALARM') {
         this.startPolling();
         if (sendResponse) sendResponse({ success: true });
@@ -30,10 +29,10 @@ class CimeLiveChecker {
         this.showTestNotification();
         if (sendResponse) sendResponse({ success: true });
       }
-      return true; // Keep channel open for async response
+      return true;
     });
 
-    // Handle Notification Button Clicks
+    // 알림 버튼 클릭 처리
     browserAPI.notifications.onButtonClicked.addListener((notificationId, buttonIndex) => {
       if (notificationId.startsWith('cime_') && buttonIndex === 0) {
         const parts = notificationId.split('_');
@@ -42,7 +41,7 @@ class CimeLiveChecker {
       }
     });
 
-    // Handle Notification Body Clicks
+    // 알림 본문 클릭 처리
     browserAPI.notifications.onClicked.addListener((notificationId) => {
       if (notificationId.startsWith('cime_')) {
         const parts = notificationId.split('_');
@@ -51,8 +50,24 @@ class CimeLiveChecker {
       }
     });
 
-    // Start Polling
+    // 브라우저 시작 시 즉시 스트리머 상태 체크 (ALWAYS 모드 지원)
+    browserAPI.runtime.onStartup.addListener(() => {
+      console.log('[onStartup] 브라우저 시작 감지 - 즉시 스트리머 상태 체크');
+      this.checkAllStreamers();
+    });
+
+    // 확장프로그램 설치/업데이트 시에도 즉시 체크
+    browserAPI.runtime.onInstalled.addListener(() => {
+      console.log('[onInstalled] 확장프로그램 설치/업데이트 - 폴링 시작 및 즉시 체크');
+      this.startPolling();
+      this.checkAllStreamers();
+    });
+
+    // 폴링 시작
     this.startPolling();
+
+    // Service Worker 초기화 시 즉시 한 번 체크 (alarm 대기 없이)
+    this.checkAllStreamers();
   }
 
   async startPolling() {
