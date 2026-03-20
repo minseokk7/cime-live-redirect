@@ -10,6 +10,8 @@ class CimeLiveChecker {
   constructor() {
     // 동시 실행 방지 플래그
     this._isChecking = false;
+    // 브라우저 시작 후 첫 체크인지 여부
+    this._isFirstCheck = true;
     this.init();
   }
 
@@ -94,8 +96,12 @@ class CimeLiveChecker {
       if (streamers.length === 0) return;
 
       for (const streamer of streamers) {
-        await this.checkStreamerStatus(streamer);
+        // 첫 체크 여부를 함께 전달
+        await this.checkStreamerStatus(streamer, this._isFirstCheck);
       }
+      
+      // 모든 스트리머 체크 후 첫 체크 플래그 해제
+      this._isFirstCheck = false;
     } catch (error) {
       console.error('[checkAll] 스트리머 체크 중 오류:', error);
     } finally {
@@ -103,7 +109,7 @@ class CimeLiveChecker {
     }
   }
 
-  async checkStreamerStatus(streamer) {
+  async checkStreamerStatus(streamer, isFirstCheck = false) {
     try {
       const platform = streamer.platform || CONFIG.PLATFORMS.CIME;
       const response = await fetch(CONFIG.CHANNEL_API_URL(streamer.slug, platform));
@@ -127,13 +133,14 @@ class CimeLiveChecker {
       
       const prevStatus = history[streamer.slug] || { isLive: false };
 
-      // Transition: Offline -> Online
+      // 상황 1: 방송이 새로 시작됨 (Off -> On)
       if (isLive && !prevStatus.isLive) {
         await this.handleLiveStarted(streamer, json.content || json.data);
       } 
-      // Mode: ALWAYS check (if tab is open)
-      else if (isLive && streamer.mode === CONFIG.MODES.ALWAYS) {
-        await this.checkAndReopenTab(streamer);
+      // 상황 2: 브라우저가 새로 켜졌을 때 이미 방송 중 + ALWAYS 모드
+      else if (isLive && isFirstCheck && streamer.mode === CONFIG.MODES.ALWAYS) {
+        console.log(`[ALWAYS] 브라우저 재시작 후 방송 중인 채널 발견 (@${streamer.slug}) - 탭 열기`);
+        this.openLiveTab(streamer.slug, streamer.platform);
       }
 
       // Update History
@@ -157,19 +164,12 @@ class CimeLiveChecker {
     }
   }
 
-  async checkAndReopenTab(streamer) {
-    const url = CONFIG.LIVE_PAGE_URL(streamer.slug, streamer.platform);
-    const tabs = await browserAPI.tabs.query({ url: `${url}*` });
-    if (tabs.length === 0) {
-      this.openLiveTab(streamer.slug, streamer.platform);
-    }
-  }
-
   async openLiveTab(slug, platform = CONFIG.PLATFORMS.CIME) {
     const url = CONFIG.LIVE_PAGE_URL(slug, platform);
-    // Check if tab already exists
+    // 탭이 이미 있는지 확인 (중복 방지)
     const tabs = await browserAPI.tabs.query({ url: `${url.split('?')[0]}*` });
     if (tabs.length > 0) {
+      // 이미 있으면 활성화만 시키거나 그대로 둠 (여기서는 활성화)
       browserAPI.tabs.update(tabs[0].id, { active: true });
     } else {
       browserAPI.tabs.create({ url });
