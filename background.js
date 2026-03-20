@@ -8,6 +8,8 @@ const browserAPI = globalThis.browser || globalThis.chrome;
 
 class CimeLiveChecker {
   constructor() {
+    // 동시 실행 방지 플래그
+    this._isChecking = false;
     this.init();
   }
 
@@ -56,17 +58,17 @@ class CimeLiveChecker {
       this.checkAllStreamers();
     });
 
-    // 확장프로그램 설치/업데이트 시에도 즉시 체크
+    // 확장프로그램 설치/업데이트 시 폴링 재설정
     browserAPI.runtime.onInstalled.addListener(() => {
-      console.log('[onInstalled] 확장프로그램 설치/업데이트 - 폴링 시작 및 즉시 체크');
+      console.log('[onInstalled] 확장프로그램 설치/업데이트 - 폴링 시작');
       this.startPolling();
-      this.checkAllStreamers();
     });
 
     // 폴링 시작
     this.startPolling();
 
     // Service Worker 초기화 시 즉시 한 번 체크 (alarm 대기 없이)
+    // onStartup과 중복 실행되더라도 _isChecking 락으로 보호됨
     this.checkAllStreamers();
   }
 
@@ -78,13 +80,26 @@ class CimeLiveChecker {
   }
 
   async checkAllStreamers() {
-    const { [CONFIG.STORAGE_KEYS.STREAMERS]: streamers = [] } = 
-      await browserAPI.storage.local.get(CONFIG.STORAGE_KEYS.STREAMERS);
-    
-    if (streamers.length === 0) return;
+    // 동시 실행 방지 - 이미 체크 중이면 건너뜀
+    if (this._isChecking) {
+      console.log('[checkAll] 이미 체크 진행 중 - 중복 실행 방지');
+      return;
+    }
 
-    for (const streamer of streamers) {
-      await this.checkStreamerStatus(streamer);
+    this._isChecking = true;
+    try {
+      const { [CONFIG.STORAGE_KEYS.STREAMERS]: streamers = [] } = 
+        await browserAPI.storage.local.get(CONFIG.STORAGE_KEYS.STREAMERS);
+      
+      if (streamers.length === 0) return;
+
+      for (const streamer of streamers) {
+        await this.checkStreamerStatus(streamer);
+      }
+    } catch (error) {
+      console.error('[checkAll] 스트리머 체크 중 오류:', error);
+    } finally {
+      this._isChecking = false;
     }
   }
 
